@@ -25,21 +25,27 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-public class MainActivity extends AppCompatActivity {
-
-    BooksService service;
+public class MainActivity extends AppCompatActivity implements MainView {
 
     private RecyclerView bookRecyclerView;
     private BookAdapter bookAdapter;
-    private List<Books> bookList;
+
+    MainPresenter presenter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        bookList = new ArrayList<>(0);
+        setUpRecyclerView();
+        ButterKnife.bind(this);
 
+        presenter = new MainPresenterImpl(this);
+        presenter.init();
+        getBooks();
+    }
+
+    private void setUpRecyclerView() {
         bookRecyclerView = (RecyclerView) findViewById(R.id.recycler_books);
         bookRecyclerView.setHasFixedSize(true);
         LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
@@ -47,40 +53,22 @@ public class MainActivity extends AppCompatActivity {
 
         bookRecyclerView.setLayoutManager(linearLayoutManager);
 
-        bookAdapter = new BookAdapter(bookList);
+        bookAdapter = new BookAdapter(new ArrayList<Books>(0));
         bookRecyclerView.setAdapter(bookAdapter);
-        ButterKnife.bind(this);
-
-        initRandomService();
-        fetchBooks();
     }
 
-    private void initRandomService() {
-        service = new Retrofit.Builder()
-                .baseUrl(BooksService.BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(BooksService.class);
+    @Override
+    public void showBooks(List<Books> bookList) {
+        bookAdapter.updateDataSet(bookList);
     }
 
-    private void fetchBooks() {
-        Call<List<Books>> call = service.getBooks();
-        call.enqueue(new Callback<List<Books>>() {
-            @Override
-            public void onResponse(Call<List<Books>> call, Response<List<Books>> response) {
-                if (response.isSuccessful()) {
-                    List<Books> books = response.body();
-                    bookAdapter.updateDataSet(books);
-                } else {
-                    Toast.makeText(MainActivity.this, "API Error: ", Toast.LENGTH_SHORT).show();
-                }
-            }
+    @Override
+    public void getBooks() {
+        presenter.getBooks();
+    }
 
-            @Override
-            public void onFailure(Call<List<Books>> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "Network error", Toast.LENGTH_SHORT).show();
-                t.printStackTrace();
-            }
-        });
+    @Override
+    public void showErrors() {
+        Toast.makeText(this, "An error occurred.", Toast.LENGTH_SHORT).show();
     }
 }
